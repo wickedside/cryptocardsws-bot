@@ -4,12 +4,13 @@ from PyQt5.QtCore import QThread, pyqtSignal
 import requests
 
 class LoginWorker(QThread):
-    finished = pyqtSignal(bool, str)
+    finished = pyqtSignal(bool, str)  # Успех, Сообщение
 
-    def __init__(self, email, password):
+    def __init__(self, email, password, code):
         super().__init__()
         self.email = email
         self.password = password
+        self.code = code
 
     def run(self):
         url = "https://api.cryptocards.ws/login"
@@ -20,7 +21,7 @@ class LoginWorker(QThread):
         data = {
             "email": self.email,
             "password": self.password,
-            "code": None,  # Если требуется 2FA
+            "code": self.code,  # Теперь код 2FA передается в запросе
         }
 
         try:
@@ -39,7 +40,7 @@ class LoginWindow(QWidget):
 
     def initUI(self):
         self.setWindowTitle('Авторизация на сайте')
-        self.setGeometry(100, 100, 280, 170)
+        self.setGeometry(100, 100, 320, 200)
 
         layout = QVBoxLayout()
 
@@ -48,6 +49,8 @@ class LoginWindow(QWidget):
         self.passwordLabel = QLabel('Пароль:')
         self.passwordInput = QLineEdit()
         self.passwordInput.setEchoMode(QLineEdit.Password)
+        self.codeLabel = QLabel('2-FA Код:')
+        self.codeInput = QLineEdit()
         self.loginButton = QPushButton('Войти')
         self.loginButton.clicked.connect(self.handleLogin)
 
@@ -55,6 +58,8 @@ class LoginWindow(QWidget):
         layout.addWidget(self.emailInput)
         layout.addWidget(self.passwordLabel)
         layout.addWidget(self.passwordInput)
+        layout.addWidget(self.codeLabel)
+        layout.addWidget(self.codeInput)
         layout.addWidget(self.loginButton)
 
         self.setLayout(layout)
@@ -62,12 +67,13 @@ class LoginWindow(QWidget):
     def handleLogin(self):
         email = self.emailInput.text().strip()
         password = self.passwordInput.text().strip()
+        code = self.codeInput.text().strip()
 
-        if not email or not password:
+        if not email or not password or (self.codeInput.isVisible() and not code):
             QMessageBox.warning(self, 'Ошибка', 'Пожалуйста, заполните все поля')
             return
 
-        self.worker = LoginWorker(email, password)
+        self.worker = LoginWorker(email, password, code)
         self.worker.finished.connect(self.onLoginFinished)
         self.worker.start()
 
